@@ -1,0 +1,8 @@
+{
+  "date": "2026-08-29",
+  "framework": "Rust embedded vanilla HTML",
+  "font": "Segoe UI system family",
+  "palette": "dark Spotify green",
+  "motion": "motion-cut",
+  "spacing": "introduced 4-point named scale"
+}

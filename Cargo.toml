@@ -1,0 +1,14 @@
+[package]
+name = "spotlite-free"
+version = "0.1.0"
+edition = "2021"
+description = "Low-overhead Spotify Free web player launcher for Windows"
+license = "MIT"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+

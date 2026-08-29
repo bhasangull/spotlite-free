@@ -1,0 +1,1 @@
+C:\Users\Thea\Documents\Codex\2026-08-29\c-users-thea-downloads-librespot-dev\target\release\spotlite-free.exe: C:\Users\Thea\Documents\Codex\2026-08-29\c-users-thea-downloads-librespot-dev\src\main.rs C:\Users\Thea\Documents\Codex\2026-08-29\c-users-thea-downloads-librespot-dev\tokens.css

@@ -1,0 +1,51 @@
+/* Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4
+ * genre: modern-minimal · macrostructure: Workbench · theme: Quiet-dark
+ * designed-as-app · motion: drawer + dialog only
+ */
+:root {
+  --color-paper: oklch(15% 0.012 145);
+  --color-paper-2: oklch(19% 0.012 145);
+  --color-paper-3: oklch(23% 0.012 145);
+  --color-ink: oklch(95% 0.008 145);
+  --color-ink-2: oklch(78% 0.008 145);
+  --color-muted: oklch(66% 0.008 145);
+  --color-rule: oklch(31% 0.012 145);
+  --color-accent: oklch(78% 0.20 145);
+  --color-accent-ink: oklch(17% 0.012 145);
+  --color-focus: oklch(82% 0.18 145);
+  --color-danger: oklch(66% 0.19 25);
+  --color-danger-ink: oklch(97% 0.008 25);
+  --color-overlay: oklch(8% 0.008 145 / 0.68);
+
+  --font-display: "Bahnschrift", "Segoe UI Variable Display", sans-serif;
+  --font-body: "Segoe UI Variable Text", "Segoe UI", sans-serif;
+
+  --space-3xs: 0.125rem;
+  --space-2xs: 0.25rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2.5rem;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.125rem;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 300ms;
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-pill: 999px;
+  --rule-thin: 1px;
+
+  --z-base: 1;
+  --z-raised: 10;
+  --z-modal: 400;
+}
