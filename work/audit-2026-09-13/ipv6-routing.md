@@ -1,0 +1,7 @@
+# Hesap başına IPv6 çıkışı
+
+Yeni sürüm ilk açılışta `%LOCALAPPDATA%\SpotLiteFree\ipv6-addresses.txt` dosyasını oluşturur. Bu dosyaya bu Windows bilgisayarına gerçekten atanmış **genel** IPv6 adreslerini birer satıra yazın. Boş satırlar ve `#` ile başlayan yorumlar atlanır. Havuz boşken yeni hesaplar önceki ortak tarayıcı davranışıyla açılır; havuzda adres varsa her yeni hesaba sıradaki boş adres kalıcı atanır. Mevcut hesaplar taşınmaz. Atama `%LOCALAPPDATA%\SpotLiteFree\AccountIPv6N.txt` içinde tutulur ve hesap silinince kaldırılır.
+
+IPv6 atanmış hesap kendi Edge kullanıcı verisi klasörünü ve kendi yerel SOCKS5 geçidini kullanır. Geçit hedefin IPv6 adresine bağlanır ve çıkış soketini hesabın atanmış adresine bağlar. Hedefin IPv6 kaydı yoksa, adres bu bilgisayarda değilse veya geçit çalışmıyorsa dış bağlantı başarısız olur; IPv4/doğrudan ağ yedeği yoktur. Yerel `127.0.0.1` panel, oynatıcı ve OAuth dönüş bağlantıları Chromium'un doğal proxy muafiyetini kullanır. Spotify API için kullanılan curl isteği de atanmış IPv6 arabirimine bağlanır. Tarayıcıdaki URL dışı ağ işlemleri ve DNS sorgularının tamamına IPv6 kaynak adresi garantisi verilmez.
+
+Yeni bir hesabın tarayıcı süreci ayrı olduğundan RAM artabilir. Kullanılabilir genel IPv6 adresi ve rota bulunmadığı için gerçek Spotify çıkış IP'si burada doğrulanamadı. Yerel SOCKS5 tüneli ve IPv4'e geri düşmeme otomatik testle doğrulandı. Üretim doğrulaması için önce adreslerin Windows ağ arayüzüne atanması gerekir.

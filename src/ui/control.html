@@ -1,0 +1,7 @@
+<!doctype html><html lang="tr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SpotLite Free — Kontrol Paneli</title><link rel="stylesheet" href="/ui.css"><body>
+<header><div><h1>SpotLite Free</h1><small>Kontrol paneli · 0.4.0</small></div><button id="add">+ Hesap ekle</button></header>
+<label><input type="checkbox" id="autostart"> Uygulama açılınca kayıtlı bağlantılara otomatik devam et</label>
+<small>Varsayılan kapalıdır. Kaydedilen giriş bilgileri bu bilgisayarda kalır; Spotify yeniden giriş isteyebilir.</small>
+<section><b>Bütün hesaplara uygula</b><form id="all" class="commands"><input id="all-url" aria-label="Spotify playlist veya şarkı bağlantısı" placeholder="Spotify playlist veya şarkı bağlantısı" required><button type="button" id="all-loop">↻ Playlist</button><button class="primary">Tümünde başlat</button></form></section>
+<p id="message" role="status"></p><main id="accounts"></main>
+<script src="/playback-core.js"></script><script src="/control.js"></script></body></html>
