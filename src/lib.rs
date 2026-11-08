@@ -1,13 +1,17 @@
 //! Local integration with Spotify Soloist. Account setup is a later stage.
 
-use serde_json::{json, Value};
+pub mod library;
+pub mod login;
+pub mod player_state;
+
+use serde_json::{Value, json};
 use std::{
     fs, io,
     net::{Ipv4Addr, SocketAddrV4, TcpStream},
     path::Path,
     time::{Duration, Instant},
 };
-use tungstenite::{client, Message};
+use tungstenite::{Message, client};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct PlaybackStatus {
@@ -38,9 +42,37 @@ pub fn play_local_mp3(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
 #[derive(Debug)]
 pub enum Command<'a> {
     Play(&'a str),
+    Resume,
     Pause,
+    Next,
+    Previous,
     RepeatTrack(bool),
     RepeatContext(bool),
+}
+
+/// Accept only Spotify track, album, playlist or episode links and URIs.
+pub fn spotify_uri(input: &str) -> Option<String> {
+    let trimmed = input.trim();
+    if trimmed.starts_with("spotify:") {
+        return payload(&Command::Play(trimmed))
+            .ok()
+            .map(|_| trimmed.to_owned());
+    }
+    let url = reqwest::Url::parse(trimmed).ok()?;
+    if url.scheme() != "https" || url.host_str() != Some("open.spotify.com") {
+        return None;
+    }
+    let mut parts = url.path_segments()?;
+    let mut kind = parts.next()?;
+    if kind.starts_with("intl-") {
+        kind = parts.next()?;
+    }
+    let id = parts.next()?;
+    if parts.next().is_some() {
+        return None;
+    }
+    let uri = format!("spotify:{kind}:{id}");
+    payload(&Command::Play(&uri)).ok().map(|_| uri)
 }
 
 fn payload(command: &Command<'_>) -> Result<Value, &'static str> {
@@ -61,7 +93,10 @@ fn payload(command: &Command<'_>) -> Result<Value, &'static str> {
             }
             json!({"type":"command", "command":"play", "uri":uri})
         }
+        Command::Resume => json!({"type":"command", "command":"play"}),
         Command::Pause => json!({"type":"command", "command":"pause"}),
+        Command::Next => json!({"type":"command", "command":"skip_next"}),
+        Command::Previous => json!({"type":"command", "command":"skip_prev"}),
         Command::RepeatTrack(enabled) => {
             json!({"type":"command", "command":"set_repeat_track", "enabled":enabled})
         }
@@ -103,12 +138,19 @@ pub fn send_command(
     command: Command<'_>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let data = payload(&command)?;
-    let name = data["command"].as_str().ok_or("Komut eksik")?.to_owned();
     let mut socket = connect_local(endpoint)?;
+    send_on(&mut socket, data)
+}
+
+fn send_on(
+    socket: &mut tungstenite::WebSocket<TcpStream>,
+    data: Value,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let name = data["command"].as_str().ok_or("Komut eksik")?.to_owned();
     socket.send(Message::Text(data.to_string().into()))?;
     let deadline = Instant::now() + Duration::from_secs(5);
     for _ in 0..32 {
-        let Message::Text(text) = read_before(&mut socket, deadline)? else {
+        let Message::Text(text) = read_before(socket, deadline)? else {
             continue;
         };
         let event: Value = serde_json::from_str(text.as_str())?;
@@ -122,6 +164,31 @@ pub fn send_command(
         }
     }
     Err("Komut onayı alınamadı".into())
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RepeatMode {
+    Off,
+    Context,
+    Track,
+}
+
+/// Soloist requires two commands in order. A failure may leave the first
+/// applied; callers must observe the subsequent options event to confirm.
+pub fn set_repeat_mode(
+    endpoint: SocketAddrV4,
+    mode: RepeatMode,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let commands = match mode {
+        RepeatMode::Off => [Command::RepeatTrack(false), Command::RepeatContext(false)],
+        RepeatMode::Context => [Command::RepeatTrack(false), Command::RepeatContext(true)],
+        RepeatMode::Track => [Command::RepeatContext(false), Command::RepeatTrack(true)],
+    };
+    let mut socket = connect_local(endpoint)?;
+    for command in commands {
+        send_on(&mut socket, payload(&command)?)?;
+    }
+    Ok(())
 }
 
 /// Soloist writes this endpoint in its data directory when its WebSocket API
@@ -306,6 +373,24 @@ mod tests {
     }
 
     #[test]
+    fn spotify_links_are_normalized_and_other_hosts_rejected() {
+        let uri = "spotify:track:7GqvrVU8R6tBv9DAN1USaG";
+        assert_eq!(
+            spotify_uri("https://open.spotify.com/intl-tr/track/7GqvrVU8R6tBv9DAN1USaG?si=example"),
+            Some(uri.into())
+        );
+        assert_eq!(spotify_uri(uri), Some(uri.into()));
+        assert_eq!(
+            spotify_uri("https://open.spotify.com.evil.test/track/7GqvrVU8R6tBv9DAN1USaG"),
+            None
+        );
+        assert_eq!(
+            spotify_uri("https://open.spotify.com/track/not-valid"),
+            None
+        );
+    }
+
+    #[test]
     fn repeat_commands_encode_the_requested_mode() {
         assert_eq!(
             payload(&Command::RepeatTrack(true)).unwrap(),
@@ -315,6 +400,33 @@ mod tests {
             payload(&Command::RepeatContext(false)).unwrap(),
             json!({"type":"command", "command":"set_repeat_context", "enabled":false})
         );
+    }
+
+    #[test]
+    fn repeat_track_disables_context_before_enabling_track() {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let address = match listener.local_addr().unwrap() {
+            std::net::SocketAddr::V4(a) => a,
+            _ => unreachable!(),
+        };
+        let server = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            let mut ws = tungstenite::accept(stream).unwrap();
+            for (expected, enabled) in [("set_repeat_context", false), ("set_repeat_track", true)] {
+                let message = ws.read().unwrap().into_text().unwrap();
+                let value: Value = serde_json::from_str(&message).unwrap();
+                assert_eq!(value["command"], expected);
+                assert_eq!(value["enabled"], enabled);
+                ws.send(Message::Text(
+                    json!({"type":"command_result","command":expected})
+                        .to_string()
+                        .into(),
+                ))
+                .unwrap();
+            }
+        });
+        set_repeat_mode(address, RepeatMode::Track).unwrap();
+        server.join().unwrap();
     }
 
     #[test]
@@ -339,10 +451,12 @@ mod tests {
 
     #[test]
     fn local_player_rejects_non_mp3_and_missing_files() {
-        assert!(play_local_mp3(Path::new("not-a-song.txt"))
-            .unwrap_err()
-            .to_string()
-            .contains("MP3"));
+        assert!(
+            play_local_mp3(Path::new("not-a-song.txt"))
+                .unwrap_err()
+                .to_string()
+                .contains("MP3")
+        );
         assert!(play_local_mp3(Path::new("missing-test-file.mp3")).is_err());
     }
 }
